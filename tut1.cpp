@@ -29,91 +29,124 @@ public:
     }
 
 private:
-    // Get the height of a node
     int getHeight(Node *node)
     {
         return node ? node->height : 0;
     }
 
-    // Get the balance factor of a node
     int getBalanceFactor(Node *node)
     {
         return node ? getHeight(node->left) - getHeight(node->right) : 0;
     }
 
-    // Right rotate
     Node *rightRotate(Node *y)
     {
         Node *x = y->left;
         Node *T2 = x->right;
 
-        // Perform rotation
         x->right = y;
         y->left = T2;
 
-        // Update heights
         y->height = 1 + max(getHeight(y->left), getHeight(y->right));
         x->height = 1 + max(getHeight(x->left), getHeight(x->right));
 
         return x;
     }
 
-    // Left rotate
     Node *leftRotate(Node *x)
     {
         Node *y = x->right;
         Node *T2 = y->left;
 
-        // Perform rotation
         y->left = x;
         x->right = T2;
 
-        // Update heights
         x->height = 1 + max(getHeight(x->left), getHeight(x->right));
         y->height = 1 + max(getHeight(y->left), getHeight(y->right));
 
         return y;
     }
 
-public:
-    // Insert a node into the AVL tree
-    Node *insert(Node *node, int key)
+    Node *findMin(Node *node)
     {
-        // Perform normal BST insertion
-        if (!node)
-            return new Node(key);
+        Node *current = node;
+        while (current->left)
+        {
+            current = current->left;
+        }
+        return current;
+    }
 
+    Node *deleteNode(Node *node, int key)
+    {
+        if (!node)
+            return node;
+
+        // Perform standard BST deletion
         if (key < node->key)
-            node->left = insert(node->left, key);
+        {
+            node->left = deleteNode(node->left, key);
+        }
         else if (key > node->key)
-            node->right = insert(node->right, key);
+        {
+            node->right = deleteNode(node->right, key);
+        }
         else
-            return node; // Duplicate keys not allowed
+        {
+            // Node with only one child or no child
+            if (!node->left || !node->right)
+            {
+                Node *temp = node->left ? node->left : node->right;
+                if (!temp)
+                {
+                    temp = node;
+                    node = nullptr;
+                }
+                else
+                {
+                    *node = *temp;
+                }
+                delete temp;
+            }
+            else
+            {
+                // Node with two children: get the inorder successor
+                Node *temp = findMin(node->right);
+                node->key = temp->key;
+                node->right = deleteNode(node->right, temp->key);
+            }
+        }
+
+        if (!node)
+            return node;
 
         // Update height
         node->height = 1 + max(getHeight(node->left), getHeight(node->right));
 
-        // Get the balance factor
-        int bf = getBalanceFactor(node);
+        // Rebalance the node
+        int balance = getBalanceFactor(node);
 
-        // Balance the tree
         // Left Left Case
-        if (bf > 1 && key < node->left->key)
+        if (balance > 1 && getBalanceFactor(node->left) >= 0)
+        {
             return rightRotate(node);
-
-        // Right Right Case
-        if (bf < -1 && key > node->right->key)
-            return leftRotate(node);
+        }
 
         // Left Right Case
-        if (bf > 1 && key > node->left->key)
+        if (balance > 1 && getBalanceFactor(node->left) < 0)
         {
             node->left = leftRotate(node->left);
             return rightRotate(node);
         }
 
+        // Right Right Case
+        if (balance < -1 && getBalanceFactor(node->right) <= 0)
+        {
+            return leftRotate(node);
+        }
+
         // Right Left Case
-        if (bf < -1 && key < node->right->key)
+        if (balance < -1 && getBalanceFactor(node->right) > 0)
         {
             node->right = rightRotate(node->right);
             return leftRotate(node);
@@ -122,13 +155,6 @@ public:
         return node;
     }
 
-    // Wrapper function to insert a key
-    void insert(int key)
-    {
-        root = insert(root, key);
-    }
-
-    // Inorder traversal
     void inorderTraversal(Node *node)
     {
         if (node)
@@ -139,7 +165,6 @@ public:
         }
     }
 
-    // Preorder traversal
     void preorderTraversal(Node *node)
     {
         if (node)
@@ -150,14 +175,65 @@ public:
         }
     }
 
-    // Public method for inorder traversal
+public:
+    void insert(int key)
+    {
+        root = insert(root, key);
+    }
+
+    Node *insert(Node *node, int key)
+    {
+        if (!node)
+            return new Node(key);
+
+        if (key < node->key)
+        {
+            node->left = insert(node->left, key);
+        }
+        else if (key > node->key)
+        {
+            node->right = insert(node->right, key);
+        }
+        else
+        {
+            return node; // Duplicate keys not allowed
+        }
+
+        node->height = 1 + max(getHeight(node->left), getHeight(node->right));
+        int balance = getBalanceFactor(node);
+
+        if (balance > 1 && key < node->left->key)
+            return rightRotate(node);
+
+        if (balance < -1 && key > node->right->key)
+            return leftRotate(node);
+
+        if (balance > 1 && key > node->left->key)
+        {
+            node->left = leftRotate(node->left);
+            return rightRotate(node);
+        }
+
+        if (balance < -1 && key < node->right->key)
+        {
+            node->right = rightRotate(node->right);
+            return leftRotate(node);
+        }
+
+        return node;
+    }
+
+    void deleteKey(int key)
+    {
+        root = deleteNode(root, key);
+    }
+
     void inorderTraversal()
     {
         inorderTraversal(root);
         cout << endl;
     }
 
-    // Public method for preorder traversal
     void preorderTraversal()
     {
         preorderTraversal(root);
@@ -170,20 +246,26 @@ int main()
     AvlTree avltree;
 
     // Insert nodes
+    avltree.insert(9);
+    avltree.insert(5);
+    avltree.insert(10);
+    avltree.insert(0);
+    avltree.insert(6);
+    avltree.insert(11);
+    avltree.insert(-1);
     avltree.insert(1);
     avltree.insert(2);
-    avltree.insert(4);
-    avltree.insert(5);
-    avltree.insert(6);
-    avltree.insert(3);
 
-    // Print preorder traversal
-    cout << "Preorder traversal of the AVL tree is:\n";
-    avltree.preorderTraversal();
-
-    // Print inorder traversal
     cout << "Inorder traversal of the AVL tree is:\n";
     avltree.inorderTraversal();
+
+    avltree.deleteKey(10);
+
+    cout << "Inorder traversal after deleting 10:\n";
+    avltree.inorderTraversal();
+
+    cout << "Preorder traversal of the AVL tree is:\n";
+    avltree.preorderTraversal();
 
     return 0;
 }
